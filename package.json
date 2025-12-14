@@ -9,14 +9,14 @@
   "source": "src/index.ts",
   "exports": {
     ".": {
+      "types": "./dist/index.d.ts",
       "import": "./dist/index.mjs",
-      "require": "./dist/index.js",
-      "types": "./dist/index.d.ts"
+      "require": "./dist/index.js"
     },
     "./expo": {
+      "types": "./dist/expo/index.d.ts",
       "import": "./dist/expo/index.mjs",
-      "require": "./dist/expo/index.js",
-      "types": "./dist/expo/index.d.ts"
+      "require": "./dist/expo/index.js"
     }
   },
   "files": [
