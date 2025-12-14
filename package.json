@@ -50,7 +50,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/Tracekit-Dev/react-native-apm.git"
+    "url": "git+https://github.com/Tracekit-Dev/react-native-apm.git"
   },
   "bugs": {
     "url": "https://github.com/Tracekit-Dev/react-native-apm/issues"
