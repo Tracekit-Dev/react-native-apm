@@ -1,6 +1,6 @@
 {
   "name": "@tracekit/react-native",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "TraceKit APM for React Native - Zero-config performance monitoring and live debugging for Expo and React Native apps",
   "main": "dist/index.js",
   "module": "dist/index.mjs",

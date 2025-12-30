@@ -141,16 +141,20 @@ export class HttpTransport implements Transport {
           const exceptionPayload = item as ExceptionPayload;
           const errorSpan = this.convertExceptionToSpan(exceptionPayload);
           traces.push({
-            ...exceptionPayload,
             spans: [errorSpan],
-          } as unknown as TracePayload);
+            serviceName: exceptionPayload.serviceName,
+            resource: this.buildResourceFromContext(exceptionPayload),
+            timestamp: exceptionPayload.timestamp,
+          });
         } else if ('snapshot' in item) {
           // Convert snapshot to trace format
           const snapshotPayload = item as SnapshotPayload;
           traces.push({
-            ...snapshotPayload,
             spans: [],
-          } as unknown as TracePayload);
+            serviceName: snapshotPayload.serviceName,
+            resource: this.buildResourceFromSnapshot(snapshotPayload),
+            timestamp: snapshotPayload.timestamp,
+          });
         }
       }
 
@@ -420,7 +424,39 @@ export class HttpTransport implements Transport {
     return { stringValue: String(value) };
   }
 
+  /**
+   * Build resource attributes from an exception payload
+   */
+  private buildResourceFromContext(payload: ExceptionPayload): TracePayload['resource'] {
+    return {
+      'service.name': payload.serviceName,
+      'service.version': payload.app?.appVersion,
+      'telemetry.sdk.name': '@tracekit/react-native',
+      'telemetry.sdk.version': '1.0.0',
+      'telemetry.sdk.language': 'javascript',
+      'device.model': payload.device?.deviceModel,
+      'os.name': payload.device?.platform,
+      'os.version': payload.device?.osVersion,
+    };
+  }
+
+  /**
+   * Build resource attributes from a snapshot payload
+   */
+  private buildResourceFromSnapshot(payload: SnapshotPayload): TracePayload['resource'] {
+    return {
+      'service.name': payload.serviceName,
+      'telemetry.sdk.name': '@tracekit/react-native',
+      'telemetry.sdk.version': '1.0.0',
+      'telemetry.sdk.language': 'javascript',
+    };
+  }
+
   private convertResourceAttributes(resource: any): any[] {
+    // Safety check for undefined/null resource
+    if (!resource || typeof resource !== 'object') {
+      return [];
+    }
     return Object.entries(resource).map(([key, value]) => ({
       key,
       value: this.convertAttributeValue(value),
