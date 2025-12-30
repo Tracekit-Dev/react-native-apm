@@ -216,6 +216,19 @@ export class TracekitClient implements ITracekitClient {
     const originalHandler = ErrorUtils.getGlobalHandler();
 
     ErrorUtils.setGlobalHandler((error: Error, isFatal?: boolean) => {
+      // Ignore errors from optional module resolution (these are expected)
+      const isOptionalModuleError = error.message?.includes('Requiring unknown module') && 
+        (error.message?.includes('expo-device') || 
+         error.message?.includes('expo-application') || 
+         error.message?.includes('expo-constants') ||
+         error.message?.includes('@react-native-community/netinfo'));
+      
+      if (isOptionalModuleError) {
+        this.logger.debug('Optional module not available:', error.message);
+        // Don't treat this as an error - it's expected when optional deps aren't installed
+        return;
+      }
+
       this.logger.debug('Global error caught:', error.message, { isFatal });
 
       this.captureException(error, {
@@ -290,12 +303,29 @@ export class TracekitClient implements ITracekitClient {
   // Context Helpers
   // ============================================================================
 
+  /**
+   * Safely try to require an optional module
+   * Returns null if the module is not available
+   */
+  private safeRequire<T>(moduleName: string): T | null {
+    try {
+      // Use a variable to prevent Metro from statically analyzing this require
+      const moduleId = moduleName;
+      return require(moduleId);
+    } catch {
+      this.logger.debug(`Optional module not available: ${moduleName}`);
+      return null;
+    }
+  }
+
   private async getDeviceContext(): Promise<DeviceContext> {
     const basic = getBasicDeviceContext();
 
     // Try to get additional info from Expo modules
-    try {
-      const Device = require('expo-device');
+    // Using safeRequire to gracefully handle missing optional dependencies
+    const Device = this.safeRequire<any>('expo-device');
+    
+    if (Device) {
       return {
         ...basic,
         deviceModel: Device.modelName ?? undefined,
@@ -304,8 +334,6 @@ export class TracekitClient implements ITracekitClient {
         isDevice: Device.isDevice ?? undefined,
         osVersion: Device.osVersion ?? basic.osVersion,
       };
-    } catch {
-      // Expo Device not available
     }
 
     return basic;
@@ -315,10 +343,12 @@ export class TracekitClient implements ITracekitClient {
     const basic = getBasicAppContext();
 
     // Try to get additional info from Expo modules
-    try {
-      const Application = require('expo-application');
-      const Constants = require('expo-constants').default;
+    // Using safeRequire to gracefully handle missing optional dependencies
+    const Application = this.safeRequire<any>('expo-application');
+    const ConstantsModule = this.safeRequire<any>('expo-constants');
+    const Constants = ConstantsModule?.default ?? ConstantsModule;
 
+    if (Application && Constants) {
       return {
         ...basic,
         appName: Application.applicationName ?? undefined,
@@ -328,8 +358,6 @@ export class TracekitClient implements ITracekitClient {
         isExpoGo: Constants.appOwnership === 'expo',
         expoSdkVersion: Constants.expoConfig?.sdkVersion ?? undefined,
       };
-    } catch {
-      // Expo modules not available
     }
 
     return {
